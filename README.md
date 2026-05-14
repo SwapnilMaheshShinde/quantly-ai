@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Quantly — Intraday Options Engine
 ## SMA7 | 3-Min | NSE/NFO | Intraday Only
 
@@ -59,3 +60,6 @@ Open: **http://localhost:6000**
 - Token: Generate fresh each morning before 9:15 AM
 - Session default: 09:45 - 15:00 (fully customisable)
 - No overnight positions — EVER
+=======
+# StrategyTesterBot
+>>>>>>> cb65792a7fd83974fe56e63baf8352dfe97dd3ce

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quantly — AI Algorithmic Trading Platform</title>
+<style>
+:root {
+  --bg:     #030508;
+  --bg2:    #07090f;
+  --bg3:    #0d1218;
+  --border: #141e28;
+  --green:  #00e5a0;
+  --green2: #00c87a;
+  --blue:   #2196f3;
+  --gold:   #f5c842;
+  --text:   #c8dcea;
+  --muted:  #4e6880;
+  --dim:    #1a2d3f;
+  --syne:   'Segoe UI', Arial, sans-serif;
+  --mono:   Consolas, 'Courier New', monospace;
+  --body:   'Segoe UI', Tahoma, sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background-color:#030508;
+  background-image:
+    linear-gradient(rgba(20,30,40,0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20,30,40,0.5) 1px, transparent 1px);
+  background-size:48px 48px;
+  color:#c8dcea;
+  font-family:'Segoe UI',Tahoma,sans-serif;
+  overflow-x:hidden;
+  min-height:100vh;
+}
+
+.wrap{position:relative;max-width:1160px;margin:0 auto;padding:0 24px;}
+
+/* ── NAV ─────────────────────────── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;
+  border-bottom:1px solid var(--border);
+  background:#030508ee;}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:62px;padding:0 32px;}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.logo-q{width:32px;height:32px;background:linear-gradient(135deg,var(--green),#2196f3);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-family:var(--syne);font-weight:800;font-size:14px;color:#000;}
+.logo-text{font-family:var(--syne);font-size:16px;font-weight:700;color:var(--text);}
+.logo-text span{color:var(--green);}
+.nav-links{display:flex;align-items:center;gap:8px;}
+.nav-link{color:var(--muted);text-decoration:none;font-size:13px;padding:6px 12px;border-radius:6px;transition:.2s;font-family:var(--body);}
+.nav-link:hover{color:var(--text);background:var(--bg3);}
+.nav-btn{background:var(--green);color:#000;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--syne);transition:.2s;}
+.nav-btn:hover{background:var(--green2);}
+.nav-btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 17px;font-size:13px;cursor:pointer;font-family:var(--syne);transition:.2s;}
+.nav-btn-ghost:hover{border-color:var(--green);color:var(--green);}
+
+/* ── HERO ────────────────────────── */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:100px 24px 60px;position:relative;
+  background:radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,229,160,0.07) 0%, transparent 60%);}
+.hero-tag{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(0,229,160,.3);
+  background:rgba(0,229,160,.08);border-radius:20px;padding:6px 16px;
+  font-family:var(--mono);font-size:12px;color:var(--green);margin-bottom:32px;
+  animation:fadeUp .8s ease both;}
+.tag-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(1.5);}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.hero h1{font-family:var(--syne);font-size:clamp(38px,6vw,78px);font-weight:800;line-height:1.05;
+  margin-bottom:24px;animation:fadeUp .8s .1s ease both;}
+.hero h1 .accent{
+  background:linear-gradient(135deg,var(--green),#2196f3 60%,var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero p{font-size:18px;color:var(--muted);max-width:600px;margin:0 auto 40px;line-height:1.8;
+  animation:fadeUp .8s .2s ease both;}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;animation:fadeUp .8s .3s ease both;}
+.btn-primary{background:var(--green);color:#000;border:none;border-radius:9px;padding:14px 28px;
+  font-size:15px;font-weight:700;cursor:pointer;font-family:var(--syne);transition:.2s;text-decoration:none;display:inline-flex;align-items:center;gap:8px;}
+.btn-primary:hover{background:var(--green2);transform:translateY(-1px);box-shadow:0 8px 30px rgba(0,229,160,.3);}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:9px;padding:13px 27px;
+  font-size:15px;font-weight:600;cursor:pointer;font-family:var(--syne);transition:.2s;text-decoration:none;display:inline-flex;align-items:center;}
+.btn-secondary:hover{border-color:var(--blue);color:var(--blue);}
+.btn-ghost{background:transparent;border:1px solid var(--dim);color:var(--muted);border-radius:9px;padding:13px 27px;
+  font-size:15px;cursor:pointer;font-family:var(--syne);transition:.2s;text-decoration:none;display:inline-flex;align-items:center;}
+.btn-ghost:hover{color:var(--text);border-color:var(--muted);}
+
+/* ── STATS BAR ───────────────────── */
+.stats-bar{border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg2);}
+.stats-inner{display:flex;justify-content:center;gap:0;flex-wrap:wrap;}
+.stat{padding:20px 40px;text-align:center;border-right:1px solid var(--border);}
+.stat:last-child{border-right:none;}
+.stat-val{font-family:var(--syne);font-size:26px;font-weight:800;color:var(--green);margin-bottom:3px;}
+.stat-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;font-family:var(--mono);}
+
+/* ── WORKFLOW ────────────────────── */
+.section{padding:90px 0;}
+.section-tag{font-family:var(--mono);font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;}
+.section-title{font-family:var(--syne);font-size:clamp(28px,4vw,46px);font-weight:800;margin-bottom:16px;line-height:1.15;}
+.section-sub{font-size:16px;color:var(--muted);max-width:560px;line-height:1.8;}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:50px;}
+.step-card{background:var(--bg2);padding:28px;transition:.2s;}
+.step-card:hover{background:var(--bg3);}
+.step-num{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:14px;}
+.step-ico{font-size:24px;margin-bottom:10px;}
+.step-title{font-family:var(--syne);font-size:16px;font-weight:700;margin-bottom:8px;}
+.step-desc{font-size:13px;color:var(--muted);line-height:1.7;}
+
+/* ── FEATURES ────────────────────── */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:50px;}
+.feat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px;transition:.2s;position:relative;overflow:hidden;}
+.feat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0;transition:.3s;}
+.feat:hover{border-color:rgba(0,229,160,.2);transform:translateY(-2px);}
+.feat:hover::before{opacity:1;}
+.feat-ico{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;}
+.feat-ico.g{background:rgba(0,229,160,.1);}
+.feat-ico.b{background:rgba(33,150,243,.1);}
+.feat-ico.o{background:rgba(245,200,66,.1);}
+.feat-title{font-family:var(--syne);font-size:17px;font-weight:700;margin-bottom:8px;}
+.feat-desc{font-size:13px;color:var(--muted);line-height:1.8;}
+
+/* ── TERMINAL DEMO ───────────────── */
+.demo-wrap{margin-top:50px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.demo-bar{display:flex;align-items:center;gap:7px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.demo-dot{width:12px;height:12px;border-radius:50%;}
+.demo-title{flex:1;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.demo-body{padding:24px;font-family:var(--mono);font-size:13px;line-height:2;}
+.dm{color:var(--muted);}
+.dg{color:var(--green);}
+.db{color:#64b5f6;}
+.dy{color:var(--gold);}
+.dr{color:#ef5350;}
+.dt{color:var(--text);}
+.cursor{display:inline-block;width:8px;height:16px;background:var(--green);animation:blink 1s step-end infinite;vertical-align:middle;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* ── BROKERS ─────────────────────── */
+.brokers-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:36px;justify-content:center;}
+.broker-chip{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 20px;font-size:13px;font-family:var(--mono);color:var(--muted);transition:.2s;}
+.broker-chip:hover{border-color:var(--green);color:var(--green);}
+
+/* ── CTA ─────────────────────────── */
+.cta-section{padding:90px 0;text-align:center;}
+.cta-box{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:60px;position:relative;overflow:hidden;}
+.cta-glow{position:absolute;top:-50%;left:50%;transform:translateX(-50%);width:600px;height:300px;
+  background:radial-gradient(ellipse,rgba(0,229,160,0.08),transparent 70%);pointer-events:none;}
+.cta-box h2{font-family:var(--syne);font-size:clamp(26px,4vw,46px);font-weight:800;margin-bottom:16px;}
+.cta-box p{font-size:16px;color:var(--muted);margin-bottom:32px;}
+
+/* ── FOOTER ──────────────────────── */
+footer{border-top:1px solid var(--border);padding:30px 0;text-align:center;}
+footer p{font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+/* ── ANIMATIONS ──────────────────── */
+.fade-in{opacity:0;transform:translateY(24px);transition:.7s ease;}
+.fade-in.visible{opacity:1;transform:translateY(0);}
+
+@media(max-width:680px){
+  .stat{padding:16px 20px;}
+  .nav-links .nav-link{display:none;}
+  .cta-box{padding:36px 20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="logo">
+      <div class="logo-q">Q</div>
+      <div class="logo-text">Quantly <span>AI</span></div>
+    </a>
+    <div class="nav-links">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#workflow" class="nav-link">How it Works</a>
+      <a href="#brokers" class="nav-link">Brokers</a>
+      <button class="nav-btn-ghost" onclick="location.href='/auth'">Sign In</button>
+      <button class="nav-btn" onclick="location.href='/auth?mode=signup'">Get Started →</button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div>
+    <div class="hero-tag">
+      <div class="tag-dot"></div>
+      <span>AI-Powered Algo Trading Platform</span>
+    </div>
+    <h1>Build Algo Strategies<br>in <span class="accent">Plain English</span></h1>
+    <p>Describe your trading idea in natural language. Quantly AI converts it into executable Python strategy code, backtests it on real market data, and prepares it for live deployment.</p>
+    <div class="hero-btns">
+      <a href="/auth?mode=signup" class="btn-primary">Start Building Free →</a>
+      <a href="/auth" class="btn-secondary">Sign In</a>
+      <a href="/dashboard" class="btn-ghost" id="guestBtn" onclick="startGuest(event)">Try as Guest</a>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="wrap">
+    <div class="stats-inner">
+      <div class="stat"><div class="stat-val">12+</div><div class="stat-lbl">Brokers Supported</div></div>
+      <div class="stat"><div class="stat-val">LLaMA 3.3</div><div class="stat-lbl">AI Engine</div></div>
+      <div class="stat"><div class="stat-val">∞</div><div class="stat-lbl">Strategy Combinations</div></div>
+      <div class="stat"><div class="stat-val">Real-Time</div><div class="stat-lbl">Market Data</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- WORKFLOW -->
+<section class="section" id="workflow">
+  <div class="wrap">
+    <div class="fade-in">
+      <div class="section-tag">— How it works</div>
+      <div class="section-title">From English to Alpha<br>in 5 Steps</div>
+    </div>
+    <div class="steps-grid fade-in">
+      <div class="step-card">
+        <div class="step-num">01 /</div>
+        <div class="step-ico">✍️</div>
+        <div class="step-title">Describe</div>
+        <div class="step-desc">Type your strategy in plain English — indicators, conditions, session times.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02 /</div>
+        <div class="step-ico">🧠</div>
+        <div class="step-title">AI Parses</div>
+        <div class="step-desc">Groq LLaMA 3.3 converts your text into validated Python signal code.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03 /</div>
+        <div class="step-ico">⚙️</div>
+        <div class="step-title">Configure</div>
+        <div class="step-desc">Select instrument, date range, lot size, risk controls, and session times.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">04 /</div>
+        <div class="step-ico">📊</div>
+        <div class="step-title">Backtest</div>
+        <div class="step-desc">Walk-forward simulation on real candle data via your broker API.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">05 /</div>
+        <div class="step-ico">🚀</div>
+        <div class="step-title">Analyze</div>
+        <div class="step-desc">Full P&L reports, equity curves, candlestick charts, and trade logs.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TERMINAL DEMO -->
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="demo-wrap fade-in">
+      <div class="demo-bar">
+        <div class="demo-dot" style="background:#ff5f56"></div>
+        <div class="demo-dot" style="background:#ffbd2e"></div>
+        <div class="demo-dot" style="background:#27c93f"></div>
+        <div class="demo-title">Quantly AI Strategy Engine</div>
+      </div>
+      <div class="demo-body">
+        <div><span class="dm">user@quantly:~$ </span><span class="dg">quantly parse</span></div>
+        <div><span class="dm">Strategy › </span><span class="dt">"Buy when EMA 9 crosses above EMA 21 and RSI above 50. Exit when RSI drops below 40."</span></div>
+        <div><span class="dm">──────────────────────────────────────────────</span></div>
+        <div><span class="db">✓ Strategy name   </span><span class="dt">EMA Crossover + RSI Filter</span></div>
+        <div><span class="db">✓ Indicators      </span><span class="dg">EMA(9), EMA(21), RSI(14)</span></div>
+        <div><span class="db">✓ Buy signal      </span><span class="dy">ema_9 crosses above ema_21 AND rsi > 50</span></div>
+        <div><span class="db">✓ Exit long       </span><span class="dy">rsi drops below 40 OR ema_9 crosses below ema_21</span></div>
+        <div><span class="dm">──────────────────────────────────────────────</span></div>
+        <div><span class="dg">✓ Confidence: 94%</span>&nbsp;&nbsp;<span class="dm">Running backtest on NIFTY25MARFUT...</span></div>
+        <div><span class="dm">──────────────────────────────────────────────</span></div>
+        <div><span class="dg">✓ Total P&L   </span><span class="dt">+₹1,24,500</span></div>
+        <div><span class="dg">✓ Win Rate    </span><span class="dt">62.3%</span></div>
+        <div><span class="dg">✓ Profit Factor </span><span class="dt">2.14x</span></div>
+        <div><span class="dm">$ </span><span class="cursor"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" id="features" style="padding-top:0">
+  <div class="wrap">
+    <div class="fade-in" style="text-align:center">
+      <div class="section-tag">— Platform features</div>
+      <div class="section-title">Everything You Need</div>
+    </div>
+    <div class="features-grid fade-in">
+      <div class="feat">
+        <div class="feat-ico g">🧠</div>
+        <div class="feat-title">Natural Language Strategy</div>
+        <div class="feat-desc">Just describe your strategy. No coding required. AI handles SMA, EMA, RSI, MACD, Bollinger, Supertrend, VWAP, FVG, ORB, CPR, Box Theory — all of it.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-ico b">📈</div>
+        <div class="feat-title">Real Broker Data</div>
+        <div class="feat-desc">Backtests run on live historical data from your broker. No synthetic data — real candles, real fills, real P&L estimates.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-ico o">🛡</div>
+        <div class="feat-title">Risk Controls</div>
+        <div class="feat-desc">Hard stop-loss per trade in price points, max trades per day cap, intraday/holding mode, session time filters.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-ico g">🕯</div>
+        <div class="feat-title">Custom Chart Engine</div>
+        <div class="feat-desc">Interactive candlestick chart with trade entry/exit markers, indicator overlays, volume bars, scrolling and zoom.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-ico b">📋</div>
+        <div class="feat-title">Full Trade Log</div>
+        <div class="feat-desc">Every trade — entry/exit price, P&L, exit reason (signal / SL / EOD), direction, and monthly P&L breakdown.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-ico o">🔐</div>
+        <div class="feat-title">Secure Broker Connection</div>
+        <div class="feat-desc">Your API keys are stored securely per user. Multiple broker support. Guest mode for exploring without an account.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BROKERS -->
+<section class="section" id="brokers" style="padding-top:0">
+  <div class="wrap" style="text-align:center">
+    <div class="fade-in">
+      <div class="section-tag">— Supported brokers</div>
+      <div class="section-title">Your Broker, Your Data</div>
+      <p class="section-sub" style="margin:0 auto">Connect your own broker API for live historical data. API keys are encrypted and only used for authorized read/trade actions.</p>
+    </div>
+    <div class="brokers-grid fade-in">
+      <div class="broker-chip">🔷 Zerodha Kite</div>
+      <div class="broker-chip">🔶 Angel One</div>
+      <div class="broker-chip">⬜ Upstox</div>
+      <div class="broker-chip">🟢 Groww</div>
+      <div class="broker-chip">🔵 Dhan</div>
+      <div class="broker-chip">🟡 5Paisa</div>
+      <div class="broker-chip">⬛ Alice Blue</div>
+      <div class="broker-chip">🔴 Fyers</div>
+      <div class="broker-chip">🔷 ICICI Direct</div>
+      <div class="broker-chip">🟤 Kotak Securities</div>
+      <div class="broker-chip">🟠 Motilal Oswal</div>
+      <div class="broker-chip">🔵 Paytm Money</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="wrap">
+    <div class="cta-box fade-in">
+      <div class="cta-glow"></div>
+      <h2>Ready to Trade Smarter?</h2>
+      <p>Free to get started. Connect your broker and run your first AI backtest in minutes.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <a href="/auth?mode=signup" class="btn-primary">Create Free Account →</a>
+        <a href="/dashboard" class="btn-ghost" onclick="startGuest(event)">Try as Guest</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <p>© 2025 Quantly AI · Built with Groq LLaMA 3.3 · For educational & research use only. Not financial advice.</p>
+  </div>
+</footer>
+
+<script>
+// Scroll animations
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+
+// Guest mode
+async function startGuest(e) {
+  e.preventDefault();
+  await fetch('/api/broker/guest', { method: 'POST' });
+  location.href = '/dashboard';
+}
+</script>
+</body>
+</html>

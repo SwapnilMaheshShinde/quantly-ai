@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quantly — Connect Your Broker</title>
+<style>
+:root{
+  --bg:#030508;--bg2:#07090f;--bg3:#0d1218;--border:#141e28;--border2:#1c2a3a;
+  --green:#00e5a0;--blue:#2196f3;--gold:#f5c842;--orange:#ff9800;
+  --text:#c8dcea;--muted:#3d5a72;--dim:#1a2d3f;--red:#ef5350;
+  --syne:'Segoe UI',Arial,sans-serif;--mono:Consolas,'Courier New',monospace;--body:'Segoe UI',Tahoma,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background-color:#030508;
+  background-image:linear-gradient(rgba(20,30,40,0.5) 1px,transparent 1px),linear-gradient(90deg,rgba(20,30,40,0.5) 1px,transparent 1px);
+  background-size:48px 48px;
+  color:#c8dcea;font-family:'Segoe UI',Tahoma,sans-serif;min-height:100vh;
+}
+.glow{position:fixed;top:0;left:50%;transform:translateX(-50%);
+  width:800px;height:300px;
+  background:radial-gradient(ellipse,rgba(0,229,160,.05),transparent 70%);
+  pointer-events:none;z-index:0;}
+
+nav{position:sticky;top:0;z-index:100;border-bottom:1px solid var(--border);background:#030508ee;}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:58px;padding:0 28px;}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none;}
+.logo-q{width:28px;height:28px;background:linear-gradient(135deg,var(--green),#2196f3);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;font-family:var(--syne);font-weight:800;font-size:12px;color:#000;}
+.logo-text{font-family:var(--syne);font-size:14px;font-weight:700;color:var(--text);}
+.logo-text span{color:var(--green);}
+.user-pill{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 12px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+.wrap{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:0 20px 80px;}
+
+.page-hdr{text-align:center;padding:52px 0 36px;}
+.page-hdr h1{font-family:var(--syne);font-size:clamp(24px,4vw,38px);font-weight:800;margin-bottom:10px;}
+.page-hdr p{font-size:14px;color:var(--muted);line-height:1.8;}
+.step-pills{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:36px;flex-wrap:wrap;}
+.sp{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;}
+.sp-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
+.sp.done .sp-dot{background:var(--green);color:#000;}
+.sp.active .sp-dot{background:var(--blue);color:#fff;}
+.sp.wait .sp-dot{background:var(--bg3);border:1px solid var(--border2);color:var(--muted);}
+.sp.done .sp-lbl{color:var(--green);}
+.sp.active .sp-lbl{color:var(--blue);}
+.sp.wait .sp-lbl{color:var(--muted);}
+.sp-line{width:28px;height:1px;background:var(--border2);}
+.sp-line.done{background:var(--green);}
+
+/* Broker grid */
+.brokers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px;}
+.broker-card{background:var(--bg2);border:2px solid var(--border);border-radius:11px;padding:18px 14px;
+  text-align:center;cursor:pointer;transition:.2s;position:relative;}
+.broker-card:hover{border-color:rgba(0,229,160,.4);background:var(--bg3);}
+.broker-card.sel{border-color:var(--green);background:rgba(0,229,160,.06);}
+.broker-card.sel::after{content:'✓';position:absolute;top:6px;right:8px;color:var(--green);font-size:12px;font-weight:700;}
+.broker-ico{font-size:26px;margin-bottom:8px;}
+.broker-nm{font-family:var(--syne);font-size:12px;font-weight:700;}
+.broker-tag{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;}
+
+/* API form */
+.api-form{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:28px;margin-top:16px;display:none;}
+.api-form.show{display:block;}
+.api-form-title{font-family:var(--syne);font-size:16px;font-weight:700;margin-bottom:4px;}
+.api-form-sub{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;}
+
+label{display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
+.fi{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;
+  color:var(--text);font-size:13px;font-family:var(--mono);outline:none;transition:.2s;margin-bottom:13px;}
+.fi:focus{border-color:var(--green);}
+.fi::placeholder{color:var(--dim);}
+
+/* Steps accordion */
+.steps-acc{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;margin-bottom:16px;overflow:hidden;}
+.acc-hdr{padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;}
+.acc-hdr:hover{background:rgba(255,255,255,.03);}
+.acc-body{padding:0 16px 14px;font-size:12px;font-family:var(--mono);color:var(--muted);line-height:2;display:none;}
+.acc-body.open{display:block;}
+.acc-chevron{font-size:10px;transition:.2s;}
+.acc-hdr.open .acc-chevron{transform:rotate(180deg);}
+
+/* Disclaimer */
+.disclaimer{background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.2);border-radius:9px;padding:14px 16px;font-size:12px;font-family:var(--mono);color:#a89030;line-height:2;margin-bottom:16px;}
+.disclaimer strong{color:var(--gold);}
+
+.btn-connect{width:100%;padding:13px;background:var(--green);color:#000;border:none;border-radius:9px;
+  font-family:var(--syne);font-size:14px;font-weight:700;cursor:pointer;transition:.2s;}
+.btn-connect:hover{background:#00c87a;}
+.btn-connect:disabled{opacity:.5;cursor:not-allowed;}
+
+.divider{display:flex;align-items:center;gap:10px;margin:18px 0;font-size:12px;color:var(--muted);}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.btn-guest{width:100%;padding:11px;background:transparent;border:1px solid var(--border2);color:var(--muted);
+  border-radius:9px;font-family:var(--syne);font-size:13px;cursor:pointer;transition:.2s;}
+.btn-guest:hover{border-color:var(--muted);color:var(--text);}
+
+.alert{border-radius:7px;padding:9px 12px;font-size:12px;margin-bottom:12px;display:none;font-family:var(--mono);}
+.alert-r{background:rgba(239,83,80,.1);border:1px solid var(--red);color:var(--red);}
+.alert-g{background:rgba(0,229,160,.08);border:1px solid var(--green);color:var(--green);}
+
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle;}
+@keyframes rot{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="logo">
+      <div class="logo-q">Q</div>
+      <div class="logo-text">Quantly <span>AI</span></div>
+    </a>
+    <div class="user-pill" id="userPill">👤 Loading...</div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="page-hdr">
+    <div class="step-pills">
+      <div class="sp done"><div class="sp-dot">✓</div><div class="sp-lbl">Account</div></div>
+      <div class="sp-line done"></div>
+      <div class="sp active"><div class="sp-dot">2</div><div class="sp-lbl">Connect Broker</div></div>
+      <div class="sp-line"></div>
+      <div class="sp wait"><div class="sp-dot">3</div><div class="sp-lbl">Dashboard</div></div>
+    </div>
+    <h1>Connect Your Broker</h1>
+    <p>Select your broker and enter API credentials to enable<br>live market data and backtesting on real candles.</p>
+  </div>
+
+  <!-- BROKER CARDS -->
+  <div class="brokers-grid">
+    <div class="broker-card" onclick="selBroker(this,'Zerodha Kite')">
+      <div class="broker-ico">🔷</div>
+      <div class="broker-nm">Zerodha Kite</div>
+      <div class="broker-tag">Full Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'Angel One')">
+      <div class="broker-ico">🔶</div>
+      <div class="broker-nm">Angel One</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'Upstox')">
+      <div class="broker-ico">⬜</div>
+      <div class="broker-nm">Upstox</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'Groww')">
+      <div class="broker-ico">🟢</div>
+      <div class="broker-nm">Groww</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'Dhan')">
+      <div class="broker-ico">🔵</div>
+      <div class="broker-nm">Dhan</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'5Paisa')">
+      <div class="broker-ico">🟡</div>
+      <div class="broker-nm">5Paisa</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'Alice Blue')">
+      <div class="broker-ico">⬛</div>
+      <div class="broker-nm">Alice Blue</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'Fyers')">
+      <div class="broker-ico">🔴</div>
+      <div class="broker-nm">Fyers</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'ICICI Direct')">
+      <div class="broker-ico">🔷</div>
+      <div class="broker-nm">ICICI Direct</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'Kotak Securities')">
+      <div class="broker-ico">🟤</div>
+      <div class="broker-nm">Kotak Securities</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'Motilal Oswal')">
+      <div class="broker-ico">🟠</div>
+      <div class="broker-nm">Motilal Oswal</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+    <div class="broker-card" onclick="selBroker(this,'Paytm Money')">
+      <div class="broker-ico">🔵</div>
+      <div class="broker-nm">Paytm Money</div>
+      <div class="broker-tag">API Support</div>
+    </div>
+  </div>
+
+  <!-- API CREDENTIALS FORM -->
+  <div class="api-form" id="apiForm">
+    <div class="api-form-title" id="formTitle">Connect API</div>
+    <div class="api-form-sub">Enter your broker API credentials below. These are stored securely and used only for historical data and backtesting.</div>
+
+    <!-- How-to steps accordion -->
+    <div class="steps-acc">
+      <div class="acc-hdr" onclick="toggleAcc(this)">
+        📖 How to get your API credentials <span class="acc-chevron">▼</span>
+      </div>
+      <div class="acc-body" id="howToBody">
+        <div id="howToText">
+          1. Login to your broker's developer/API portal<br>
+          2. Create a new app — choose "Trading" type<br>
+          3. Copy the API Key and API Secret<br>
+          4. Generate an access token via OAuth (Zerodha: use "Token" button in dashboard)<br>
+          5. Paste all three values below and click Connect
+        </div>
+      </div>
+    </div>
+
+    <div class="steps-acc">
+      <div class="acc-hdr" onclick="toggleAcc(this)">
+        🔒 How are my API keys used? <span class="acc-chevron">▼</span>
+      </div>
+      <div class="acc-body">
+        ✓ API keys are stored encrypted in a local SQLite database<br>
+        ✓ Keys are NEVER shared, logged, or sent to any third-party server<br>
+        ✓ Keys are only used to fetch historical candle data from your broker<br>
+        ✓ You retain full ownership and control of your broker account<br>
+        ✓ You can revoke API access from your broker portal at any time<br>
+        ✓ Quantly does NOT place live trades without your explicit permission
+      </div>
+    </div>
+
+    <label>API Key *</label>
+    <input class="fi" type="text" id="apiKey" placeholder="Broker API Key">
+
+    <label>API Secret</label>
+    <input class="fi" type="password" id="apiSecret" placeholder="Broker API Secret">
+
+    <label>Access Token <span style="color:var(--dim);font-size:10px;text-transform:none">(if already generated)</span></label>
+    <input class="fi" type="password" id="accessToken" placeholder="Access Token (optional)">
+
+    <div class="disclaimer">
+      <strong>⚠ Disclaimer:</strong> By connecting your broker API, you authorize Quantly to read historical market data and account information using your credentials. Quantly does NOT automatically place trades. All backtesting is simulation only. Past performance does not guarantee future results. Use at your own risk. Not financial advice.
+    </div>
+
+    <div id="formAlert" class="alert alert-r"></div>
+    <button class="btn-connect" id="connectBtn" onclick="connectBroker()">🔗 Connect Broker</button>
+    <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted);font-family:var(--mono)">
+      You can always change your broker connection from the dashboard settings.
+    </div>
+  </div>
+
+  <div class="divider" style="margin-top:24px">or skip for now</div>
+  <button class="btn-guest" onclick="startGuest()">⚡ Continue as Guest — Use demo API</button>
+  <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--muted);font-family:var(--mono)">
+    Guest mode uses a shared demo API with limited access
+  </div>
+</div>
+
+<script>
+let selectedBroker = null;
+
+// Load user
+fetch('/api/auth/me').then(r => r.json()).then(d => {
+  if(d.status === 'ok') {
+    document.getElementById('userPill').textContent = '👤 ' + d.user.full_name;
+  } else {
+    location.href = '/auth';
+  }
+});
+
+function selBroker(el, name) {
+  document.querySelectorAll('.broker-card').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedBroker = name;
+
+  const form = document.getElementById('apiForm');
+  document.getElementById('formTitle').textContent = 'Connect ' + name + ' API';
+  form.classList.add('show');
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Broker-specific how-to
+  const howTo = {
+    'Zerodha Kite': '1. Go to kite.trade/api → create app\n2. Copy API Key + API Secret\n3. Click "Token" button in Quantly dashboard to generate access token via Zerodha OAuth\n4. Paste all three here',
+    'Angel One': '1. Go to smartapi.angelbroking.com → create app\n2. Copy API Key\n3. Generate access token via SmartAPI OAuth\n4. Paste credentials here',
+    'Upstox': '1. Go to api2.upstox.com → create app\n2. Copy API Key + Secret\n3. Generate access token via OAuth callback\n4. Paste credentials here',
+  };
+  const txt = howTo[name] || '1. Login to your broker\'s developer portal\n2. Create a trading API app\n3. Copy API Key and Secret\n4. Generate access token via their OAuth flow\n5. Paste here';
+  document.getElementById('howToText').innerHTML = txt.replace(/\n/g, '<br>');
+}
+
+function toggleAcc(hdr) {
+  hdr.classList.toggle('open');
+  const body = hdr.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+function showAl(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'alert alert-' + (type||'r'); el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 8000);
+}
+
+async function connectBroker() {
+  if(!selectedBroker) { alert('Please select a broker first'); return; }
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if(!apiKey) { showAl('formAlert', 'API Key is required'); return; }
+  const apiSecret = document.getElementById('apiSecret').value.trim();
+  const accessToken = document.getElementById('accessToken').value.trim();
+
+  const btn = document.getElementById('connectBtn');
+  btn.disabled = true; btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle"></span> Connecting...';
+
+  try {
+    const r = await fetch('/api/broker/connect', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ broker: selectedBroker, api_key: apiKey, api_secret: apiSecret, access_token: accessToken })
+    });
+    const d = await r.json();
+    if(d.status === 'ok') {
+      showAl('formAlert', '✓ Broker connected! Redirecting to dashboard...', 'g');
+      setTimeout(() => location.href = d.redirect || '/dashboard', 1200);
+    } else {
+      showAl('formAlert', d.message || 'Connection failed');
+      btn.disabled = false; btn.textContent = '🔗 Connect Broker';
+    }
+  } catch(e) {
+    showAl('formAlert', 'Network error: ' + e.message);
+    btn.disabled = false; btn.textContent = '🔗 Connect Broker';
+  }
+}
+
+async function startGuest() {
+  await fetch('/api/broker/guest', { method: 'POST' });
+  location.href = '/dashboard';
+}
+</script>
+<style>
+@keyframes rot { to { transform: rotate(360deg); } }
+</style>
+</body>
+</html>

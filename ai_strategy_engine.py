@@ -1,18 +1,18 @@
 """
-ai_strategy_engine.py  —  Quantly AI Strategy Backtest Engine  v2.0
+ai_strategy_engine.py  —  Quantly AI Strategy Backtest Engine  v3.0
 =====================================================================
-IMPROVEMENTS IN THIS VERSION:
-  1. MUCH better Groq prompt — handles complex multi-indicator strategies,
-     FVG, price-action, range-based, time-based, and custom logic.
-  2. _eval_signal always uses .iloc[-1] positional — fixed IndexError.
-  3. Fresh engine always created on /api/backtest/start.
-  4. Robust JSON repair before parse.
-  5. Fallback code generation if AI returns garbage signals.
-  6. Trade data now includes full OHLCV candle at entry/exit for charting.
-  7. Indicator series returned for chart overlay rendering.
-  8. No-trade diagnostics: counts how many times each signal was True.
-  9. Better column-fix and sanitize covering more edge cases.
- 10. Session time validation and soft-warning instead of hard crash.
+FIXES IN v3.0:
+  1. FIX: prev_day_high / prev_day_low now computed as df columns so
+     last['prev_day_high'] works correctly in signal code.
+  2. FIX: All "standalone variable" patterns (prev_day_*, orb_*, etc.)
+     auto-patched via _sanitize to use last['col'] syntax.
+  3. FIX: Instrument search — smarter partial/fuzzy matching for Kite
+     naming conventions (NIFTY25MARFUT, BANKNIFTY25300CE, etc.)
+  4. NEW: Box Theory / Previous Day H/L template added to PARSE_PROMPT.
+  5. NEW: _eval now injects all df indicator column scalars as named
+     variables so AI-generated code referencing them directly works.
+  6. Better _fix_cols covers prev_day_* and similar patterns.
+  7. Warmup increased to accommodate prev_day calculations.
 """
 
 import os, re, json, threading, time
@@ -45,11 +45,13 @@ CRITICAL RULES
 1. Use ONLY the indicators the user mentioned. Nothing extra.
 2. Signal code uses: last=df.iloc[i], prev=df.iloc[i-1], df=full DataFrame
 3. Signal code MUST assign bool to: buy, sell, exit_long, exit_short
-4. Use last['col'] and prev['col'] — NEVER df.iloc[-1]['col']
+4. ALWAYS use last['col'] syntax — NEVER use bare variable names like prev_day_high.
 5. Always wrap comparisons in float() to avoid Series bool errors.
 6. For complex strategies with multiple conditions, join with: and / or
 7. If user mentions no sell/short signal, default: sell=False; exit_short=False
 8. For strategies without explicit exit: exit on opposite signal
+9. ALL indicator values must be stored as df columns and accessed via last['colname']
+10. NEVER reference a bare Python variable — always use last['colname'] or prev['colname']
 
 ═══════════════════════════════════════════════════════════════════
 INDICATOR TEMPLATES (use exactly as shown)
@@ -90,7 +92,7 @@ Supertrend (10,3):
   df['st_upper']=(df['high']+df['low'])/2+3*_atr10
   df['st_lower']=(df['high']+df['low'])/2-3*_atr10
   df['supertrend']=df['st_lower']
-  df['st_bull']=df['close']>df['st_lower']
+  df['st_bull']=(df['close']>df['st_lower']).astype(float)
 
 Stochastic (14,3):
   _l14=df['low'].rolling(14).min(); _h14=df['high'].rolling(14).max()
@@ -106,25 +108,37 @@ CPR (Central Pivot Range):
   df['cpr_bc']=(_ph+_pl)/2
   df['cpr_tc']=df['cpr_pivot']+(df['cpr_pivot']-df['cpr_bc'])
 
-Opening Range Breakout (first 2 candles = 15min on 5min chart):
+Opening Range Breakout (first 3 candles = 15min on 5min chart):
   df['date_only']=df['date'].dt.date
   df['candle_num']=df.groupby('date_only').cumcount()+1
   _orb_h=df[df['candle_num']<=3].groupby('date_only')['high'].max()
   _orb_l=df[df['candle_num']<=3].groupby('date_only')['low'].min()
   df['orb_high']=df['date_only'].map(_orb_h)
   df['orb_low']=df['date_only'].map(_orb_l)
-  df['orb_valid']=df['candle_num']>3
+  df['orb_valid']=(df['candle_num']>3).astype(float)
 
-First N Candle Range (like ORB but user specifies N candles):
+Previous Day High / Low (Box Theory / PDH-PDL):
   df['date_only']=df['date'].dt.date
-  df['candle_num']=df.groupby('date_only').cumcount()+1
-  _rh=df[df['candle_num']<=N].groupby('date_only')['high'].max()
-  _rl=df[df['candle_num']<=N].groupby('date_only')['low'].min()
-  df['range_high']=df['date_only'].map(_rh)
-  df['range_low']=df['date_only'].map(_rl)
-  df['range_valid']=df['candle_num']>N
+  _dh=df.groupby('date_only')['high'].max()
+  _dl=df.groupby('date_only')['low'].min()
+  _dc=df.groupby('date_only')['close'].last()
+  df['prev_day_high']=df['date_only'].map(_dh).shift(1)
+  df['prev_day_low']=df['date_only'].map(_dl).shift(1)
+  df['prev_day_close']=df['date_only'].map(_dc).shift(1)
 
-FVG (Fair Value Gap) — bullish: gap between candle[i-2] high and candle[i] low:
+  NOTE: Access as last['prev_day_high'], last['prev_day_low'], last['prev_day_close']
+  These are scalar float values in each row — ALWAYS use last['prev_day_high'] NOT the bare name.
+
+Candlestick pattern helpers (for shooting star / bullish engulfing):
+  df['body']=abs(df['close']-df['open'])
+  df['upper_wick']=df['high']-df[['open','close']].max(axis=1)
+  df['lower_wick']=df[['open','close']].min(axis=1)-df['low']
+  df['is_bearish']=(df['close']<df['open']).astype(float)
+  df['is_bullish']=(df['close']>df['open']).astype(float)
+  df['is_shooting_star']=((df['upper_wick']>2*df['body'])&(df['lower_wick']<df['body'])&(df['close']<df['open'])).astype(float)
+  df['is_hammer']=((df['lower_wick']>2*df['body'])&(df['upper_wick']<df['body'])&(df['close']>df['open'])).astype(float)
+
+FVG (Fair Value Gap):
   df['fvg_bull']=df['low'] > df['high'].shift(2)
   df['fvg_bear']=df['high'] < df['low'].shift(2)
   df['fvg_bull_top']=df['low'].where(df['fvg_bull'])
@@ -134,36 +148,49 @@ Highest High / Lowest Low (swing):
   df['hh_N']=df['high'].rolling(N).max()
   df['ll_N']=df['low'].rolling(N).min()
 
+First N Candle Range:
+  df['date_only']=df['date'].dt.date
+  df['candle_num']=df.groupby('date_only').cumcount()+1
+  _rh=df[df['candle_num']<=N].groupby('date_only')['high'].max()
+  _rl=df[df['candle_num']<=N].groupby('date_only')['low'].min()
+  df['range_high']=df['date_only'].map(_rh)
+  df['range_low']=df['date_only'].map(_rl)
+  df['range_valid']=(df['candle_num']>N).astype(float)
+
 ═══════════════════════════════════════════════════════════════════
 SIGNAL CODE PATTERNS
 ═══════════════════════════════════════════════════════════════════
 
+CRITICAL: ALL column values MUST use last['colname'] — never bare variable names.
+
+Box Theory (Previous Day H/L):
+  # Buy: price touches prev_day_low, then bullish candle forms → go long
+  buy = (float(last['low'])<=float(last['prev_day_low'])) and (float(last['close'])>float(last['prev_day_low'])) and bool(last['is_bullish'])
+  # Sell: price touches prev_day_high, then bearish candle forms → go short
+  sell = (float(last['high'])>=float(last['prev_day_high'])) and (float(last['close'])<float(last['prev_day_high'])) and bool(last['is_bearish'])
+
+Shooting Star short entry at previous day high:
+  sell = (float(last['high'])>=float(last['prev_day_high'])) and bool(last['is_shooting_star'])
+
+Hammer long entry at previous day low:
+  buy = (float(last['low'])<=float(last['prev_day_low'])) and bool(last['is_hammer'])
+
 Crossover (SMA5 crosses above SMA20):
   buy = (float(last['sma_5'])>float(last['sma_20'])) and (float(prev['sma_5'])<=float(prev['sma_20']))
 
-Range breakout (price closes above range_high after range is valid):
-  buy = bool(last.get('range_valid', False)) and float(last['close'])>float(last['range_high'])
-
-FVG + Range breakout combo:
-  buy = bool(last.get('range_valid', False)) and float(last['close'])>float(last['range_high']) and bool(last.get('fvg_bull', False))
-
-RSI condition:
-  buy = float(last['rsi']) > 50
+Range breakout:
+  buy = float(last.get('range_valid',0))>0 and float(last['close'])>float(last['range_high'])
 
 MACD crossover:
   buy = (float(last['macd'])>float(last['macd_signal'])) and (float(prev['macd'])<=float(prev['macd_signal']))
 
-Bollinger touch and close back inside:
-  buy = float(prev['close'])<float(prev['bb_lower']) and float(last['close'])>float(last['bb_lower'])
-
-Multi-condition (use parentheses and 'and'/'or' only):
+Multi-condition:
   buy = (float(last['ema_9'])>float(last['ema_21'])) and (float(prev['ema_9'])<=float(prev['ema_21'])) and float(last['rsi'])>50
 
-Exit on opposite or threshold:
-  exit_long = float(last['rsi']) < 40 or float(last['close']) < float(last['ema_21'])
-
-SAFE ACCESS for columns that may not exist every row:
-  buy = float(last.get('range_high', 0)) > 0 and float(last['close']) > float(last.get('range_high', 0))
+Exit with fixed ratio (1:3 risk-reward using ATR):
+  exit_long = float(last['close']) >= float(last['entry_ref']) + 3*float(last['atr'])
+  NOTE: For fixed R:R exits, use max_loss_points for SL and rely on signal exit for target.
+  Simpler: exit_long = float(last['close']) < float(last['prev_day_low']) - 5
 
 ═══════════════════════════════════════════════════════════════════
 RETURN FORMAT — ONLY valid JSON, no markdown fences, no comments
@@ -171,7 +198,7 @@ RETURN FORMAT — ONLY valid JSON, no markdown fences, no comments
 {
   "strategy_name": "Short Name",
   "description": "One sentence.",
-  "indicators_used": ["SMA5","SMA20"],
+  "indicators_used": ["Prev Day H/L","Candlestick Pattern"],
   "session_start": "09:15",
   "session_end": "15:15",
   "suggested_timeframe": "5minute",
@@ -183,12 +210,12 @@ RETURN FORMAT — ONLY valid JSON, no markdown fences, no comments
     "session": "...",
     "notes": "..."
   },
-  "python_indicators": "df['sma_5']=df['close'].rolling(5).mean()\\ndf['sma_20']=df['close'].rolling(20).mean()",
-  "python_buy":        "buy=(float(last['sma_5'])>float(last['sma_20']))and(float(prev['sma_5'])<=float(prev['sma_20']))",
-  "python_sell":       "sell=False",
-  "python_exit_long":  "exit_long=float(last['sma_5'])<float(last['sma_20'])",
-  "python_exit_short": "exit_short=False",
-  "min_candles_needed": 25,
+  "python_indicators": "df['date_only']=df['date'].dt.date\\n...",
+  "python_buy":        "buy=(float(last['low'])<=float(last['prev_day_low']))and bool(last['is_hammer'])",
+  "python_sell":       "sell=(float(last['high'])>=float(last['prev_day_high']))and bool(last['is_shooting_star'])",
+  "python_exit_long":  "exit_long=float(last['close'])<float(last['prev_day_low'])-5",
+  "python_exit_short": "exit_short=float(last['close'])>float(last['prev_day_high'])+5",
+  "min_candles_needed": 50,
   "confidence": 90,
   "warnings": []
 }
@@ -198,9 +225,14 @@ suggested_timeframe options: minute|3minute|5minute|15minute|30minute|60minute|2
 
 
 def _sanitize(code: str) -> str:
-    """Normalise signal code: replace df.iloc patterns, strip assignment lines."""
+    """
+    Normalise signal code.
+    Key fix: convert bare variable references like prev_day_high → last['prev_day_high']
+    """
     if not code:
         return code
+
+    # Replace df.iloc patterns
     code = re.sub(r'df\.iloc\[-1\]', 'last', code)
     code = re.sub(r'df\.iloc\[-2\]', 'prev', code)
     code = re.sub(r'df\.iloc\[i\s*-\s*1\]', 'prev', code)
@@ -210,18 +242,67 @@ def _sanitize(code: str) -> str:
     code = re.sub(r"df\[(['\"][^'\"]+['\"])\]\.iloc\[i\]", r'last[\1]', code)
     code = re.sub(r"df\[(['\"][^'\"]+['\"])\]\.iloc\[i-1\]", r'prev[\1]', code)
     code = re.sub(r"df\[(['\"][^'\"]+['\"])\]\.shift\(1\)\.iloc\[-1\]", r'prev[\1]', code)
-    # remove any lines that re-assign last/prev from df.iloc
+
+    # Remove lines that re-assign last/prev from df.iloc
     lines = [l for l in code.split('\n')
              if not re.match(r'^\s*(last|prev)\s*=\s*df\.iloc', l)]
-    return '\n'.join(lines).strip()
+    code = '\n'.join(lines).strip()
+
+    # FIX: Convert bare indicator variable names to last['colname']
+    # Pattern: known multi-word indicator column names used as bare variables
+    # e.g. prev_day_high → last['prev_day_high']
+    # We detect: float(prev_day_high) → float(last['prev_day_high'])
+    #            prev_day_high >= x   → float(last['prev_day_high']) >= x
+    # Match bare identifiers that look like column names (contain underscore, not last/prev/df/pd/np/bool/float/int)
+    reserved = {'last', 'prev', 'df', 'pd', 'np', 'bool', 'float', 'int', 'True', 'False',
+                'None', 'and', 'or', 'not', 'buy', 'sell', 'exit_long', 'exit_short',
+                'str', 'len', 'abs', 'max', 'min', 'round', 'print', 'range', 'i'}
+
+    # Replace float(bare_var) patterns
+    def _fix_float_bare(m):
+        name = m.group(1)
+        if name in reserved:
+            return m.group(0)
+        return "float(last['{}'])".format(name)
+
+    code = re.sub(r"float\(([a-z][a-z0-9_]{2,})\)", _fix_float_bare, code)
+
+    # Replace bool(bare_var) patterns
+    def _fix_bool_bare(m):
+        name = m.group(1)
+        if name in reserved:
+            return m.group(0)
+        return "bool(last['{}'])".format(name)
+
+    code = re.sub(r"bool\(([a-z][a-z0-9_]{2,})\)", _fix_bool_bare, code)
+
+    # Replace remaining bare variable comparisons: prev_day_high >= / <= / == / > / <
+    # that aren't already wrapped
+    def _fix_bare_compare(m):
+        name = m.group(1)
+        if name in reserved:
+            return m.group(0)
+        return "float(last['{}'])".format(name)
+
+    # Match bare names on left/right of comparison operators
+    code = re.sub(
+        r'(?<![\'"\[\w])([a-z][a-z0-9_]{3,})(?![\'"\]\w\(])\s*(?=[><=!])',
+        _fix_bare_compare, code
+    )
+
+    return code
 
 
 def _fix_cols(code: str, cols: list, log=None) -> str:
     """Fix last['x']/prev['x'] references that don't match actual df columns."""
     col_set = set(cols)
     seen = set()
-    base_cols = {"open", "close", "high", "low", "volume", "date", "date_only", "candle_num"}
-    for m in re.finditer(r"(?:last|prev)\.get\((['\"])([^'\"]+)\1|(?:last|prev)\[(['\"])([^'\"]+)\3\]", code):
+    base_cols = {"open", "close", "high", "low", "volume", "date", "date_only",
+                 "candle_num", "body", "upper_wick", "lower_wick"}
+
+    for m in re.finditer(
+            r"(?:last|prev)\.get\((['\"])([^'\"]+)\1|(?:last|prev)\[(['\"])([^'\"]+)\3\]",
+            code):
         col = m.group(2) or m.group(4)
         if not col or col in seen or col in col_set or col in base_cols:
             continue
@@ -252,7 +333,6 @@ def _repair_json(raw: str) -> str:
     s = raw.find('{'); e = raw.rfind('}') + 1
     if s >= 0 and e > 0:
         raw = raw[s:e]
-    # Escape bare control chars inside strings
     out = []; in_s = False; i = 0
     while i < len(raw):
         ch = raw[i]
@@ -376,13 +456,29 @@ class AIBacktestEngine:
     def _eval(self, code: str, var: str, last, prev, df) -> bool:
         """
         Execute signal code safely.
-        CRITICAL: pd.Series results → use .iloc[-1] (positional, not label).
+        KEY FIX: Inject all numeric df columns as named variables so that
+        AI-generated code using bare names like prev_day_high also works.
         """
         import builtins
+
+        # Build a dict of all indicator column scalar values at current row
+        # This means last['prev_day_high'] AND bare prev_day_high both work
+        col_scalars = {}
+        for col in df.columns:
+            try:
+                v = last[col]
+                if isinstance(v, (int, float, np.integer, np.floating)):
+                    col_scalars[col] = float(v)
+                elif isinstance(v, (bool, np.bool_)):
+                    col_scalars[col] = bool(v)
+            except Exception:
+                pass
+
         ctx = {
             "last": last, "prev": prev, "df": df,
             "pd": pd, "np": np,
-            "i": last.name, "__builtins__": builtins
+            "i": last.name, "__builtins__": builtins,
+            **col_scalars  # inject all column scalars as named vars
         }
         try:
             exec(compile(code, "<sig>", "exec"), ctx)
@@ -390,7 +486,7 @@ class AIBacktestEngine:
             if val is None:
                 return False
             if isinstance(val, pd.Series):
-                val = bool(val.iloc[-1])   # positional last — NEVER label-based
+                val = bool(val.iloc[-1])
             elif hasattr(val, 'item'):
                 val = val.item()
             return bool(val)
@@ -445,7 +541,7 @@ class AIBacktestEngine:
                      if c not in ("open", "high", "low", "close", "volume", "date")]
             self._log(f"Indicator columns: {added}")
             if not added:
-                self._log("WARNING: No indicator columns created — strategy may be misinterpreted.", "WARNING")
+                self._log("WARNING: No indicator columns created.", "WARNING")
 
             # 3. Prepare & validate signal code
             cols = list(df.columns)
@@ -461,14 +557,14 @@ class AIBacktestEngine:
                 sigs[var] = c
                 self._log(f"  {var:14s}: {c[:120]}")
 
-            # 4. Warmup
-            warmup = max(int(p.get("min_candles_needed", 30)), 5)
+            # 4. Warmup — use more candles for strategies needing prev_day data
+            warmup = max(int(p.get("min_candles_needed", 50)), 10)
             if len(df) <= warmup + 2:
                 self._log(f"Only {len(df)} candles for warmup={warmup} — widen date range.", "ERROR")
                 self.error = "Not enough candles"; return
             self._log(f"Warmup={warmup} | simulating candles {warmup}..{len(df)-1}")
 
-            # Dry-run on warmup candle to catch code errors early
+            # Dry-run
             tl = df.iloc[warmup]; tp = df.iloc[warmup - 1]
             sig_counts = {v: 0 for v in sigs}
             for var, c in sigs.items():
@@ -487,14 +583,14 @@ class AIBacktestEngine:
 
             self._log("── Walk-forward simulation ──")
             for i in range(warmup, len(df)):
-                row = df.iloc[i]; prev = df.iloc[i - 1]
+                row = df.iloc[i]; prev_row = df.iloc[i - 1]
                 close = float(row["close"])
                 ts = pd.Timestamp(row["date"])
                 cm = self._cm(ts)
                 today = ts.strftime("%Y-%m-%d")
 
                 for var, c in sigs.items():
-                    if self._eval(c, var, row, prev, df):
+                    if self._eval(c, var, row, prev_row, df):
                         sig_counts[var] += 1
 
                 # A. EOD force-close
@@ -525,7 +621,7 @@ class AIBacktestEngine:
                         pos = 0; continue
 
                 # C. Signal exits
-                if pos == 1 and self._eval(sigs["exit_long"], "exit_long", row, prev, df):
+                if pos == 1 and self._eval(sigs["exit_long"], "exit_long", row, prev_row, df):
                     pnl = (close - entry_px) * self.qty
                     trades.append(self._mk(entry_dt, row["date"], "LONG", entry_px, close, pnl, "SIGNAL",
                                            entry_candle_idx, i, df))
@@ -535,7 +631,7 @@ class AIBacktestEngine:
                               "INFO" if pnl >= 0 else "WARNING")
                     pos = 0; continue
 
-                if pos == -1 and self._eval(sigs["exit_short"], "exit_short", row, prev, df):
+                if pos == -1 and self._eval(sigs["exit_short"], "exit_short", row, prev_row, df):
                     pnl = (entry_px - close) * self.qty
                     trades.append(self._mk(entry_dt, row["date"], "SHORT", entry_px, close, pnl, "SIGNAL",
                                            entry_candle_idx, i, df))
@@ -551,18 +647,18 @@ class AIBacktestEngine:
                     if use_mtpd and can and day_count.get(today, 0) >= self.max_trades_per_day:
                         skip_n += 1; can = False
                     if can:
-                        if self._eval(sigs["buy"], "buy", row, prev, df):
+                        if self._eval(sigs["buy"], "buy", row, prev_row, df):
                             pos = 1; entry_px = close; entry_dt = row["date"]
                             entry_candle_idx = i
                             self._log(f"BUY   @ {close:.2f}  [{cm//60:02d}:{cm%60:02d} {today}]  "
                                       f"day_trades={day_count.get(today,0)}")
-                        elif self._eval(sigs["sell"], "sell", row, prev, df):
+                        elif self._eval(sigs["sell"], "sell", row, prev_row, df):
                             pos = -1; entry_px = close; entry_dt = row["date"]
                             entry_candle_idx = i
                             self._log(f"SELL  @ {close:.2f}  [{cm//60:02d}:{cm%60:02d} {today}]  "
                                       f"day_trades={day_count.get(today,0)}")
 
-            # 7. Open position at end of data
+            # 7. Open position at end
             if pos != 0:
                 row = df.iloc[-1]; close = float(row["close"])
                 today = pd.Timestamp(row["date"]).strftime("%Y-%m-%d")
@@ -580,7 +676,7 @@ class AIBacktestEngine:
             # 8. No trades diagnostics
             if not trades:
                 self._log("⚠ No trades generated!", "WARNING")
-                self._log(f"  Signal counts during {len(df)-warmup} candles: {sig_counts}", "WARNING")
+                self._log(f"  Signal counts: {sig_counts}", "WARNING")
                 if sig_counts.get("buy", 0) == 0:
                     self._log("  → buy signal never fired. Check strategy wording or try wider dates.", "WARNING")
                 self._log("  Tips: different timeframe, rephrase strategy, or wider date range.", "WARNING")
@@ -637,7 +733,7 @@ class AIBacktestEngine:
                 signal_counts=sig_counts,
             )
 
-            # 10. Candle data for chart (sample if too large)
+            # 10. Candle data for chart
             MAX_CANDLES = 2000
             if len(df) > MAX_CANDLES:
                 step = len(df) // MAX_CANDLES
@@ -645,10 +741,10 @@ class AIBacktestEngine:
             else:
                 df_chart = df.copy()
 
-            # Numeric indicator columns for chart overlay
             num_ind_cols = [c for c in added
                             if c not in ("date_only", "candle_num", "orb_valid", "range_valid",
-                                         "st_bull", "fvg_bull", "fvg_bear")
+                                         "st_bull", "fvg_bull", "fvg_bear", "is_bearish",
+                                         "is_bullish", "is_shooting_star", "is_hammer")
                             and pd.api.types.is_numeric_dtype(df_chart[c])]
 
             candles = []
@@ -705,7 +801,6 @@ class AIBacktestEngine:
             entry_idx=entry_idx,
             exit_idx=exit_idx,
         )
-        # Attach OHLCV snapshots for chart markers
         if df is not None and entry_idx is not None:
             er = df.iloc[entry_idx]
             trade["entry_high"] = round(float(er["high"]), 4)

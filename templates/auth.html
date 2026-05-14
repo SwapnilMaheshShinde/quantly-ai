@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quantly — Sign In / Sign Up</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background-color: #030508;
+  color: #c8dcea;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: #07090f;
+  border: 1px solid #141e28;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.card-top { padding: 28px 32px 0; text-align: center; }
+
+.logo {
+  display: inline-flex; align-items: center; gap: 9px;
+  margin-bottom: 24px; text-decoration: none;
+}
+.logo-q {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, #00e5a0, #2196f3);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 13px; color: #000;
+}
+.logo-text { font-size: 15px; font-weight: 700; color: #c8dcea; }
+.logo-text span { color: #00e5a0; }
+
+.tabs {
+  display: flex; background: #0d1218;
+  border-radius: 8px; padding: 3px; margin-bottom: 28px;
+}
+.tab {
+  flex: 1; padding: 9px; border: none; background: none;
+  color: #4e6880; border-radius: 6px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: .2s; font-family: inherit;
+}
+.tab.active { background: #07090f; color: #c8dcea; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+
+.card-body { padding: 0 32px 32px; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+label {
+  display: block; font-size: 11px; font-weight: 600;
+  color: #4e6880; text-transform: uppercase;
+  letter-spacing: .5px; margin-bottom: 5px; margin-top: 16px;
+}
+
+input {
+  width: 100%; background: #0d1218;
+  border: 1px solid #1c2a3a; border-radius: 8px;
+  padding: 11px 13px; color: #c8dcea;
+  font-size: 14px; font-family: Consolas, monospace;
+  outline: none; transition: border-color .2s;
+}
+input:focus { border-color: #00e5a0; }
+input::placeholder { color: #283848; }
+
+.btn-submit {
+  width: 100%; margin-top: 20px; padding: 13px;
+  background: #00e5a0; color: #000; border: none;
+  border-radius: 9px; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: background .2s; font-family: inherit;
+}
+.btn-submit:hover { background: #00c87a; }
+.btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+.divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 18px 0; font-size: 12px; color: #4e6880;
+}
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #141e28; }
+
+.btn-guest {
+  width: 100%; padding: 11px; background: transparent;
+  border: 1px solid #1a2d3f; color: #4e6880;
+  border-radius: 9px; font-size: 13px; cursor: pointer;
+  transition: .2s; font-family: inherit;
+}
+.btn-guest:hover { border-color: #4e6880; color: #c8dcea; }
+
+.alert {
+  border-radius: 7px; padding: 9px 12px;
+  font-size: 12px; margin-top: 12px; display: none;
+  font-family: Consolas, monospace;
+}
+.alert-r { background: rgba(239,83,80,.12); border:1px solid #ef5350; color: #ef5350; }
+.alert-g { background: rgba(0,229,160,.08); border:1px solid #00e5a0; color: #00e5a0; }
+
+.hint { font-size: 11px; color: #4e6880; margin-top: 8px; line-height: 1.7; font-family: Consolas, monospace; }
+.hint .ok { color: #00e5a0; }
+
+.card-footer {
+  padding: 14px 32px; border-top: 1px solid #141e28;
+  text-align: center; font-size: 12px; color: #4e6880;
+}
+.card-footer a { color: #00e5a0; text-decoration: none; }
+
+.spin {
+  display: inline-block; width: 13px; height: 13px;
+  border: 2px solid rgba(0,0,0,.3); border-top-color: #000;
+  border-radius: 50%; animation: rot .7s linear infinite; vertical-align: middle;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-top">
+    <a href="/" class="logo">
+      <div class="logo-q">Q</div>
+      <div class="logo-text">Quantly <span>AI</span></div>
+    </a>
+    <div class="tabs">
+      <button class="tab active" id="tabLogin"  onclick="switchTab('login')">Sign In</button>
+      <button class="tab"        id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+  </div>
+
+  <div class="card-body">
+
+    <!-- LOGIN -->
+    <div class="panel active" id="panelLogin">
+      <label>Email</label>
+      <input type="email" id="liEmail" placeholder="you@email.com" autocomplete="email">
+      <label>Password</label>
+      <input type="password" id="liPw" placeholder="Your password" autocomplete="current-password">
+      <div id="liAlert" class="alert alert-r"></div>
+      <button class="btn-submit" id="liBtn" onclick="doLogin()">Sign In →</button>
+      <div class="divider">or</div>
+      <button class="btn-guest" onclick="startGuest()">⚡ Continue as Guest (no account needed)</button>
+    </div>
+
+    <!-- SIGNUP -->
+    <div class="panel" id="panelSignup">
+      <label>Full Name</label>
+      <input type="text" id="suName" placeholder="Your full name" autocomplete="name">
+      <label>Email</label>
+      <input type="email" id="suEmail" placeholder="you@email.com" autocomplete="email">
+      <label>Password</label>
+      <input type="password" id="suPw" placeholder="Min. 8 characters" autocomplete="new-password" oninput="checkPw()">
+      <label>Confirm Password</label>
+      <input type="password" id="suPw2" placeholder="Repeat password" autocomplete="new-password" oninput="checkPw()">
+      <div id="pwHint" class="hint"></div>
+      <div id="suAlert" class="alert alert-r"></div>
+      <button class="btn-submit" id="suBtn" onclick="doSignup()">Create Account →</button>
+      <div class="divider">or</div>
+      <button class="btn-guest" onclick="startGuest()">⚡ Continue as Guest</button>
+    </div>
+
+  </div>
+
+  <div class="card-footer">
+    <a href="/">← Back to Home</a>
+    &nbsp;·&nbsp; API keys are encrypted and never shared.
+  </div>
+</div>
+
+<script>
+function switchTab(t) {
+  document.getElementById('tabLogin').className  = 'tab' + (t==='login'  ? ' active' : '');
+  document.getElementById('tabSignup').className = 'tab' + (t==='signup' ? ' active' : '');
+  document.getElementById('panelLogin').className  = 'panel' + (t==='login'  ? ' active' : '');
+  document.getElementById('panelSignup').className = 'panel' + (t==='signup' ? ' active' : '');
+}
+
+// Auto-switch tab based on URL param
+if (new URLSearchParams(location.search).get('mode') === 'signup') switchTab('signup');
+
+function checkPw() {
+  const pw = document.getElementById('suPw').value;
+  const pw2 = document.getElementById('suPw2').value;
+  const checks = [
+    [pw.length >= 8,             '8+ characters'],
+    [/[A-Z0-9]/.test(pw),        'number or uppercase'],
+    [pw.length > 0 && pw === pw2,'passwords match'],
+  ];
+  document.getElementById('pwHint').innerHTML = checks.map(([ok, lbl]) =>
+    '<span class="'+(ok?'ok':'')+'">'+(ok?'✓':'○')+' '+lbl+'</span>'
+  ).join('&nbsp;&nbsp;');
+}
+
+function showAl(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'alert alert-' + (type || 'r');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 8000);
+}
+
+async function doLogin() {
+  const email = document.getElementById('liEmail').value.trim();
+  const pw    = document.getElementById('liPw').value;
+  if (!email || !pw) { showAl('liAlert', 'Email and password required'); return; }
+  const btn = document.getElementById('liBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Signing in...';
+  try {
+    const r = await fetch('/api/auth/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email, password: pw })
+    });
+    const d = await r.json();
+    if (d.status === 'ok') { location.href = d.redirect || '/broker'; }
+    else { showAl('liAlert', d.message || 'Login failed'); btn.disabled=false; btn.textContent='Sign In →'; }
+  } catch(e) {
+    showAl('liAlert', 'Network error: ' + e.message);
+    btn.disabled=false; btn.textContent='Sign In →';
+  }
+}
+
+async function doSignup() {
+  const name  = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim();
+  const pw    = document.getElementById('suPw').value;
+  const pw2   = document.getElementById('suPw2').value;
+  if (!name || !email || !pw) { showAl('suAlert', 'All fields required'); return; }
+  if (pw !== pw2)    { showAl('suAlert', 'Passwords do not match'); return; }
+  if (pw.length < 8) { showAl('suAlert', 'Password must be at least 8 characters'); return; }
+  const btn = document.getElementById('suBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Creating account...';
+  try {
+    const r = await fetch('/api/auth/signup', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ full_name:name, email, password:pw, confirm_password:pw2 })
+    });
+    const d = await r.json();
+    if (d.status === 'ok') { location.href = d.redirect || '/broker'; }
+    else { showAl('suAlert', d.message || 'Signup failed'); btn.disabled=false; btn.textContent='Create Account →'; }
+  } catch(e) {
+    showAl('suAlert', 'Network error: ' + e.message);
+    btn.disabled=false; btn.textContent='Create Account →';
+  }
+}
+
+async function startGuest() {
+  await fetch('/api/broker/guest', { method: 'POST' });
+  location.href = '/dashboard';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.getElementById('panelLogin').classList.contains('active')) doLogin();
+    else doSignup();
+  }
+});
+</script>
+</body>
+</html>
