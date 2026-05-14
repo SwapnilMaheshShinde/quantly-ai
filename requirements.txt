@@ -1,6 +1,6 @@
 Flask==2.3.3
 python-dotenv==1.0.0
-kiteconnect==4.0.0
+kiteconnect==5.0.1
 requests==2.31.0
 groq==0.4.2
 pandas==2.1.4
